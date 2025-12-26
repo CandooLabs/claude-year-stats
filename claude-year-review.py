@@ -377,11 +377,60 @@ def calculate_streaks(timestamps: List[datetime]) -> Dict:
 
 
 def format_number(n: int) -> str:
-    if n >= 1_000_000:
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.2f}B"
+    elif n >= 1_000_000:
         return f"{n / 1_000_000:.2f}M"
     elif n >= 1_000:
         return f"{n / 1_000:.1f}K"
     return str(n)
+
+
+def format_model_name(model_name: str) -> str:
+    """Convert model identifiers to clean display names.
+
+    Examples:
+        claude-sonnet-4-5-20250929 -> Sonnet 4.5
+        claude-3-5-sonnet-20241022 -> Sonnet 3.5
+        claude-3-opus-20240229 -> Opus 3
+        claude-3-haiku-20240307 -> Haiku 3
+    """
+    import re
+
+    name = model_name.lower()
+
+    model_patterns = [
+        ("sonnet-4-5", "Sonnet 4.5"),
+        ("sonnet-4.5", "Sonnet 4.5"),
+        ("opus-4", "Opus 4"),
+        ("sonnet-4-2", "Sonnet 4.2"),
+        ("sonnet-4.2", "Sonnet 4.2"),
+        ("sonnet-4-1", "Sonnet 4.1"),
+        ("sonnet-4.1", "Sonnet 4.1"),
+        ("3-5-sonnet", "Sonnet 3.5"),
+        ("3.5-sonnet", "Sonnet 3.5"),
+        ("3-5-haiku", "Haiku 3.5"),
+        ("3.5-haiku", "Haiku 3.5"),
+        ("3-opus", "Opus 3"),
+        ("3.0-opus", "Opus 3"),
+        ("3-sonnet", "Sonnet 3"),
+        ("3.0-sonnet", "Sonnet 3"),
+        ("3-haiku", "Haiku 3"),
+        ("3.0-haiku", "Haiku 3"),
+        ("sonnet-4", "Sonnet 4"),
+        ("opus", "Opus"),
+        ("sonnet", "Sonnet"),
+        ("haiku", "Haiku"),
+    ]
+
+    for pattern, display in model_patterns:
+        if pattern in name:
+            return display
+
+    clean = re.sub(
+        r"\s*\d{8}$", "", model_name.replace("claude-", "").replace("-", " ")
+    )
+    return clean.title()[:20]
 
 
 def generate_html_report(data: Dict) -> str:
@@ -513,17 +562,21 @@ def generate_html_report(data: Dict) -> str:
 
     models_html = ""
     for idx, (model_name, usage) in enumerate(sorted_models[:5], 1):
-        display_name = (
-            model_name.replace("claude-", "Claude ").replace("-", " ").title()
-        )
-        if len(display_name) > 25:
-            display_name = display_name[:22] + "..."
+        display_name = format_model_name(model_name)
         models_html += f'<div class="model-item"><span class="model-rank">{idx}</span> <span class="model-name">{display_name}</span></div>'
 
     if not models_html:
         models_html = '<div class="model-item"><span class="model-rank">-</span> <span class="model-name">No data</span></div>'
 
     mini_calendar_html = ""
+    month_labels = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
+
+    mini_calendar_html += '<div class="mini-month-labels">'
+    for label in month_labels:
+        mini_calendar_html += f'<div class="mini-month-label">{label}</div>'
+    mini_calendar_html += "</div>"
+
+    mini_calendar_html += '<div class="mini-calendar-grid">'
     for month_idx in range(1, 13):
         month_start = datetime(year, month_idx, 1).date()
         if month_idx == 12:
@@ -549,6 +602,7 @@ def generate_html_report(data: Dict) -> str:
             current += timedelta(days=1)
 
         mini_calendar_html += f'<div class="mini-month">{dots_html}</div>'
+    mini_calendar_html += "</div>"
 
     sources_text = (
         ", ".join(sources) if len(sources) <= 3 else f"{len(sources)} machines"
@@ -781,27 +835,185 @@ def generate_html_report(data: Dict) -> str:
             color: var(--text-primary);
         }}
         
+        .twitter-card-wrapper {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }}
+        
         .summary-card {{
-            background: var(--bg-card);
-            border-radius: 16px;
-            padding: 40px;
-            max-width: 600px;
+            background: linear-gradient(145deg, #1e1e1e 0%, #2a2a2a 50%, #1a1a1a 100%);
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 720px;
+            width: 100%;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 48px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 0 0 1px rgba(255, 107, 53, 0.1),
+                0 4px 24px rgba(0, 0, 0, 0.4),
+                0 8px 48px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            aspect-ratio: 1200 / 675;
+        }}
+        
+        .summary-card::before {{
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -30%;
+            width: 80%;
+            height: 100%;
+            background: radial-gradient(ellipse, rgba(255, 107, 53, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }}
+        
+        .summary-card::after {{
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(ellipse, rgba(255, 107, 53, 0.04) 0%, transparent 70%);
+            pointer-events: none;
         }}
         
         .card-left {{
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 28px;
+            position: relative;
+            z-index: 1;
         }}
         
         .card-right {{
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .card-hero {{
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }}
+        
+        .card-year {{
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 600;
+            opacity: 0.7;
+        }}
+        
+        .card-hero-label {{
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+        }}
+        
+        .card-hero-value {{
+            font-size: 72px;
+            font-weight: 200;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }}
+        
+        .card-hero-suffix {{
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }}
+        
+        .card-stats {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            padding: 20px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }}
+        
+        .card-stat {{
+            display: flex;
+            flex-direction: column;
             gap: 2px;
+        }}
+        
+        .card-stat-value {{
+            font-size: 28px;
+            font-weight: 300;
+            color: var(--text-primary);
+        }}
+        
+        .card-stat-label {{
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .models-section {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+        
+        .models-section h3 {{
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }}
+        
+        .models-list {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+        
+        .model-item {{
+            font-size: 13px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        
+        .model-rank {{
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 11px;
+        }}
+        
+        .model-name {{
+            color: var(--text-primary);
         }}
         
         .joined {{
@@ -809,69 +1021,95 @@ def generate_html_report(data: Dict) -> str:
             font-size: 14px;
         }}
         
-        .models-section h3 {{
-            font-size: 14px;
-            color: var(--text-secondary);
-            font-weight: normal;
-            margin-bottom: 12px;
-        }}
-        
-        .model-item {{
-            font-size: 18px;
-            margin-bottom: 4px;
-        }}
-        
-        .model-rank {{
-            color: var(--text-secondary);
-            margin-right: 8px;
-        }}
-        
-        .card-stats {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }}
-        
-        .card-stat-label {{
-            font-size: 12px;
-            color: var(--text-secondary);
-        }}
-        
-        .card-stat-value {{
-            font-size: 28px;
-            font-weight: 300;
-        }}
-        
         .mini-calendar {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            width: 100%;
+        }}
+        
+        .mini-month-labels {{
             display: grid;
             grid-template-columns: repeat(12, 1fr);
-            gap: 2px;
+            gap: 4px;
+        }}
+        
+        .mini-month-label {{
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+            letter-spacing: 0.5px;
+        }}
+        
+        .mini-calendar-grid {{
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 4px;
         }}
         
         .mini-month {{
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 2px;
         }}
         
         .mini-dot {{
             width: 6px;
             height: 6px;
-            border-radius: 50%;
+            border-radius: 1px;
+            transition: transform 0.2s ease;
+        }}
+        
+        .mini-dot:hover {{
+            transform: scale(1.4);
         }}
         
         .branding {{
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             color: var(--text-secondary);
-            font-size: 14px;
-            margin-top: 20px;
+            font-size: 13px;
+            margin-top: auto;
+            padding-top: 16px;
         }}
         
         .logo {{
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
+            opacity: 0.7;
+        }}
+        
+        .share-button {{
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #1d9bf0 0%, #0d8ddb 100%);
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(29, 155, 240, 0.3);
+        }}
+        
+        .share-button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(29, 155, 240, 0.4);
+        }}
+        
+        .share-button svg {{
+            width: 18px;
+            height: 18px;
         }}
         
         @media (max-width: 768px) {{
@@ -881,6 +1119,43 @@ def generate_html_report(data: Dict) -> str:
             
             .summary-card {{
                 grid-template-columns: 1fr;
+                aspect-ratio: auto;
+                padding: 32px;
+                gap: 32px;
+            }}
+            
+            .card-hero-value {{
+                font-size: 48px;
+            }}
+            
+            .card-stats {{
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }}
+            
+            .card-stat-value {{
+                font-size: 22px;
+            }}
+            
+            .card-right {{
+                align-items: stretch;
+            }}
+            
+            .mini-calendar {{
+                padding: 16px;
+            }}
+            
+            .mini-calendar-grid {{
+                gap: 4px;
+            }}
+            
+            .mini-month-labels {{
+                gap: 4px;
+            }}
+            
+            .mini-dot {{
+                width: 8px;
+                height: 8px;
             }}
             
             .stats-row {{
@@ -889,6 +1164,7 @@ def generate_html_report(data: Dict) -> str:
             }}
         }}
     </style>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -930,50 +1206,106 @@ def generate_html_report(data: Dict) -> str:
         </section>
         
         <section class="section">
-            <div class="summary-card">
-                <div class="card-left">
-                    <div class="joined">Started {days_ago} Days Ago</div>
-                    
-                    <div class="models-section">
-                        <h3>Models</h3>
-                        {models_html}
+            <div class="twitter-card-wrapper">
+                <div class="summary-card" id="twitter-card">
+                    <div class="card-year">2025</div>
+                    <div class="card-left">
+                        <div class="card-hero">
+                            <div class="card-hero-label">Total Tokens</div>
+                            <div class="card-hero-value">{format_number(total_tokens)}</div>
+                        </div>
+                        
+                        <div class="card-stats">
+                            <div class="card-stat">
+                                <div class="card-stat-value">{data.get("total_messages", 0):,}</div>
+                                <div class="card-stat-label">Messages</div>
+                            </div>
+                            <div class="card-stat">
+                                <div class="card-stat-value">{streaks.get("total_days", 0)}</div>
+                                <div class="card-stat-label">Days</div>
+                            </div>
+                            <div class="card-stat">
+                                <div class="card-stat-value">{streaks.get("longest", 0)}d</div>
+                                <div class="card-stat-label">Streak</div>
+                            </div>
+                        </div>
+                        
+                        <div class="models-section">
+                            <h3>Models Used</h3>
+                            <div class="models-list">
+                                {models_html}
+                            </div>
+                        </div>
+                        
+                        <div class="branding">
+                            <svg class="logo" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L18.5 7 12 9.5 5.5 7 12 4.5zM4 8.5l7 3.5v7.5l-7-3.5V8.5zm16 0v7.5l-7 3.5v-7.5l7-3.5z"/>
+                            </svg>
+                            <span>Claude Code {year}</span>
+                            <span style="margin-left: auto; color: var(--text-dim);">Started {days_ago} days ago</span>
+                        </div>
                     </div>
                     
-                    <div class="card-stats">
-                        <div>
-                            <div class="card-stat-label">Sessions</div>
-                            <div class="card-stat-value">{total_sessions}</div>
+                    <div class="card-right">
+                        <div class="mini-calendar">
+                            {mini_calendar_html}
                         </div>
-                        <div>
-                            <div class="card-stat-label">Messages</div>
-                            <div class="card-stat-value">{data.get("total_messages", 0)}</div>
-                        </div>
-                        <div>
-                            <div class="card-stat-label">Tokens</div>
-                            <div class="card-stat-value">{format_number(total_tokens)}</div>
-                        </div>
-                        <div>
-                            <div class="card-stat-label">Streak</div>
-                            <div class="card-stat-value">{streaks.get("longest", 0)}d</div>
-                        </div>
-                    </div>
-                    
-                    <div class="branding">
-                        <svg class="logo" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L18.5 7 12 9.5 5.5 7 12 4.5zM4 8.5l7 3.5v7.5l-7-3.5V8.5zm16 0v7.5l-7 3.5v-7.5l7-3.5z"/>
-                        </svg>
-                        Claude Code {year}
                     </div>
                 </div>
                 
-                <div class="card-right">
-                    <div class="mini-calendar">
-                        {mini_calendar_html}
-                    </div>
-                </div>
+                <button onclick="shareOnTwitter()" class="share-button">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    Share on X
+                </button>
             </div>
         </section>
     </div>
+    
+    <script>
+        async function shareOnTwitter() {{
+            const card = document.getElementById('twitter-card');
+            const button = document.querySelector('.share-button');
+            
+            // Open Twitter FIRST (direct user action - won't be blocked)
+            const twitterUrl = 'https://twitter.com/intent/tweet?text=My%20Claude%20Code%20Year%20in%20Review%3A%20{format_number(total_tokens)}%20tokens%20across%20{streaks.get("total_days", 0)}%20days!%20%F0%9F%9A%80%0A%0AGenerate%20yours%3A&url=https://github.com/CandooLabs/claude-year-stats';
+            window.open(twitterUrl, '_blank');
+            
+            // Show loading state
+            button.textContent = 'Generating image...';
+            button.disabled = true;
+            
+            try {{
+                // Capture the card as canvas
+                const canvas = await html2canvas(card, {{
+                    backgroundColor: '#1a1a1a',
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                }});
+                
+                // Convert to blob and download
+                canvas.toBlob(function(blob) {{
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'claude-year-review-2025.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }}, 'image/png');
+            }} catch (err) {{
+                console.error('Error generating image:', err);
+                alert('Failed to generate image. You can still tweet!');
+            }} finally {{
+                // Restore button
+                button.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> Share on X';
+                button.disabled = false;
+            }}
+        }}
+    </script>
 </body>
 </html>"""
 

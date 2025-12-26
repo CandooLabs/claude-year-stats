@@ -1,17 +1,20 @@
 # Claude Code Year in Review
 
-A Python script that analyzes your Claude Code usage data and generates an interactive HTML report with visualizations.
+A Python script that analyzes your Claude Code usage data and generates a beautiful HTML report with visualizations and a shareable Twitter card.
 
 ## Features
 
 - Analyzes Claude Code usage data from `~/.claude` directory
 - Supports multiple data sources: local, remote hosts (via SSH/rsync), and pre-fetched paths
 - Generates an HTML report with:
-  - Token usage statistics (total and weekly breakdown)
-  - Activity calendar with daily usage visualization
+  - **Twitter-ready share card** with one-click sharing
+  - Token usage statistics (total in billions/millions)
+  - Full-year activity calendar (Jan-Dec) with month labels
   - Usage streaks (current and longest)
-  - Model usage breakdown (top 5 models)
+  - Model usage breakdown (top 5 models with clean names)
   - Per-source statistics when using multiple data sources
+  - Weekly token breakdown visualization
+- **Share on X**: Downloads card as PNG image + opens Twitter with pre-filled text
 - Merge data from multiple sources into unified statistics
 - JSON output option for programmatic access
 
@@ -100,3 +103,19 @@ By default, the script generates `~/claude-year-review.html` and opens it in you
 - **Per-Source Stats**: When using multiple sources, shows tokens, days, sessions, and events per source
 
 With `--json`, outputs aggregated statistics to stdout for programmatic use.
+
+## Sharing on Twitter/X
+
+The report includes a beautiful share card with your stats. Click the **"Share on X"** button to:
+
+1. Open Twitter with pre-filled text including your token count and days active
+2. Automatically download a PNG image of your stats card
+3. Attach the downloaded image to complete your tweet
+
+The card displays:
+- Total tokens (in billions/millions)
+- Days active
+- Messages count
+- Longest streak
+- Full-year activity calendar
+- Top models used
