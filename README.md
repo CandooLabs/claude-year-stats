@@ -1,22 +1,23 @@
-# Claude Code Year in Review
+# AI Tools Year in Review
 
-A Python script that analyzes your Claude Code usage data and generates a beautiful HTML report with visualizations and a shareable Twitter card.
+A Python script that analyzes your AI coding assistant usage data and generates a beautiful HTML report with visualizations and a shareable Twitter card.
+
+## Supported Tools
+
+- **Claude Code** (`~/.claude/`)
+- **Continue.dev** (`~/.continue/`)
+- **OpenAI Codex CLI** (`~/.codex/`)
+- **OpenCode** (`~/.local/share/opencode/`)
 
 ## Features
 
-- Analyzes Claude Code usage data from `~/.claude` directory
-- Supports multiple data sources: local, remote hosts (via SSH/rsync), and pre-fetched paths
-- Generates an HTML report with:
-  - **Twitter-ready share card** with one-click sharing
-  - Token usage statistics (total in billions/millions)
-  - Full-year activity calendar (Jan-Dec) with month labels
-  - Usage streaks (current and longest)
-  - Model usage breakdown (top 5 models with clean names)
-  - Per-source statistics when using multiple data sources
-  - Weekly token breakdown visualization
-- **Share on X**: Downloads card as PNG image + opens Twitter with pre-filled text
-- Merge data from multiple sources into unified statistics
-- JSON output option for programmatic access
+- **Multi-tool support**: Aggregates data from Claude Code, Continue.dev, Codex, and OpenCode
+- **This Week view**: 7-day sparkline with daily token counts and trend visualization
+- **All Time stats**: Total tokens, total days, and longest streak across all tools
+- **Year Activity calendar**: Full-year heatmap showing daily usage
+- **Per-tool breakdown**: Individual stats cards for each AI tool with brand colors
+- **Remote host support**: Fetch data from remote machines via SSH/rsync
+- **Twitter-ready share card**: One-click sharing with auto-generated PNG
 
 ## Requirements
 
@@ -29,10 +30,10 @@ A Python script that analyzes your Claude Code usage data and generates a beauti
 ### Basic Usage
 
 ```bash
-# Analyze local Claude Code data only
+# Analyze all local AI tools
 python3 claude-year-review.py
 
-# Include data from a remote host
+# Include data from a remote host (fetches all tools)
 python3 claude-year-review.py --remote user@hostname
 
 # Include multiple remote hosts
@@ -69,53 +70,68 @@ python3 claude-year-review.py --merge-sources "source1=target,source2=target"
 python3 claude-year-review.py --json
 ```
 
-### Combined Examples
-
-```bash
-# Full example: local + remote + backup data, merged
-python3 claude-year-review.py \
-  --remote user@workstation \
-  --data-path /backups/.claude:old-backup \
-  --merge-sources "old-backup=local"
-
-# Multiple remotes with JSON output
-python3 claude-year-review.py --remote host1 --remote host2 --json
-```
-
 ## CLI Options
 
 | Option | Description |
 |--------|-------------|
-| `--remote user@host` | Include remote SSH host (can be specified multiple times) |
+| `--remote user@host` | Include remote SSH host - fetches all AI tools (can be specified multiple times) |
 | `--remote-only user@host` | Analyze remote host only, skip local data |
-| `--data-path /path/.claude` | Include pre-fetched data from a path. Supports `path:name` format to set custom source name |
+| `--data-path /path/.claude` | Include pre-fetched data from a path. Supports `path:name` format |
 | `--merge-sources "source=target"` | Merge source data into target (comma-separated for multiple) |
 | `--json` | Output statistics as JSON instead of generating HTML report |
 
 ## Output
 
-By default, the script generates `~/claude-year-review.html` and opens it in your browser. The report includes:
+The script generates `~/ai-year-review.html` and opens it in your browser.
 
-- **Token Usage**: Total tokens consumed with weekly breakdown grid
-- **Activity Calendar**: Visual representation of daily usage across the year
-- **Usage Streaks**: Current streak and longest streak statistics
-- **Model Usage**: Top 5 Claude models used
-- **Per-Source Stats**: When using multiple sources, shows tokens, days, sessions, and events per source
+### Report Sections
 
-With `--json`, outputs aggregated statistics to stdout for programmatic use.
+1. **Tool Cards**: Per-tool breakdown showing tokens, days, and messages for each AI tool
+2. **This Week**: Today's token count + 7-day trend sparkline with data points
+3. **All Time**: Total tokens, total days active, longest streak
+4. **Year Activity**: Full calendar heatmap for the current year
+5. **Share Card**: Twitter-ready card with all-time stats and mini calendar
+
+### Tool Colors
+
+| Tool | Color |
+|------|-------|
+| Claude Code | Orange (#ff6b35) |
+| Continue.dev | Teal (#4ecdc4) |
+| Codex | Green (#22c55e) |
+| OpenCode | Purple (#a855f7) |
+
+## Remote Data Fetching
+
+When using `--remote`, the script fetches data for ALL supported tools:
+
+```bash
+python3 claude-year-review.py --remote user@workstation
+```
+
+This will rsync:
+- `~/.claude/` (Claude Code)
+- `~/.continue/` (Continue.dev)
+- `~/.codex/` (Codex)
+- `~/.local/share/opencode/` (OpenCode)
+
+Remote data appears as a separate source in the legend, allowing you to compare usage across machines.
 
 ## Sharing on Twitter/X
 
-The report includes a beautiful share card with your stats. Click the **"Share on X"** button to:
-
-1. Open Twitter with pre-filled text including your token count and days active
+Click **"Share on X"** to:
+1. Open Twitter with pre-filled text including your token count
 2. Automatically download a PNG image of your stats card
 3. Attach the downloaded image to complete your tweet
 
-The card displays:
-- Total tokens (in billions/millions)
-- Days active
-- Messages count
-- Longest streak
-- Full-year activity calendar
-- Top models used
+## Screenshots
+
+The report includes:
+- Dark theme optimized for sharing
+- Gradient accents and smooth animations
+- Responsive design for all screen sizes
+- Tool-specific brand colors in visualizations
+
+## License
+
+MIT

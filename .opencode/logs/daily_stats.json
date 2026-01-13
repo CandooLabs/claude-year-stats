@@ -1,0 +1,11 @@
+{
+  "2026-01-13": {
+    "date": "2026-01-13",
+    "sessions": 1,
+    "toolCalls": 231,
+    "blockedCommands": 9,
+    "errors": 5,
+    "estimatedTokens": 216060,
+    "estimatedCost": 1.944539999999997
+  }
+}

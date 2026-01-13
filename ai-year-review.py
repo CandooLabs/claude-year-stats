@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """
-AI Tools Year in Review - Analyzes usage data from multiple AI coding tools.
-
-Supported Tools:
-  - Claude Code (~/.claude/)
-  - Continue.dev (~/.continue/)
-  - OpenAI Codex CLI (~/.codex/)
-  - OpenCode (~/.local/share/opencode/)
+Claude Code Year in Review - Analyzes local Claude Code usage data.
 
 Usage:
   python3 claude-year-review.py                           # Local only
@@ -31,15 +25,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
-# Tool configuration with brand colors
-TOOL_CONFIG = {
-    "claude-code": {"name": "Claude Code", "color": "#ff6b35", "icon": "C"},
-    "continue": {"name": "Continue.dev", "color": "#4ecdc4", "icon": "Co"},
-    "opencode": {"name": "OpenCode", "color": "#a855f7", "icon": "O"},
-    "codex": {"name": "Codex", "color": "#22c55e", "icon": "Cx"},
-}
-
-
 def run_cmd(cmd: List[str], timeout: int = 60) -> Tuple[bool, str]:
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -50,46 +35,35 @@ def run_cmd(cmd: List[str], timeout: int = 60) -> Tuple[bool, str]:
         return False, str(e)
 
 
-def fetch_remote_data(remote: str, temp_dir: Path) -> Dict[str, Path]:
-    """Fetch all AI tool data from a remote host. Returns dict of tool_name -> local_path."""
-    base_dir = temp_dir / remote.replace("@", "_at_").replace(".", "_").replace(
+def fetch_remote_data(remote: str, temp_dir: Path) -> Optional[Path]:
+    remote_dir = temp_dir / remote.replace("@", "_at_").replace(".", "_").replace(
         ":", "_"
     )
-    base_dir.mkdir(parents=True, exist_ok=True)
+    remote_dir.mkdir(parents=True, exist_ok=True)
 
-    tools_to_fetch = [
-        ("claude-code", ".claude/"),
-        ("continue", ".continue/"),
-        ("codex", ".codex/"),
-        ("opencode", ".local/share/opencode/"),
-    ]
-
-    fetched = {}
     print(f"  Fetching data from {remote}...")
 
-    for tool_name, remote_path in tools_to_fetch:
-        local_dir = base_dir / tool_name
-        local_dir.mkdir(parents=True, exist_ok=True)
+    success, output = run_cmd(
+        [
+            "rsync",
+            "-avz",
+            f"{remote}:.claude/",
+            str(remote_dir) + "/",
+        ],
+        timeout=120,
+    )
 
-        success, output = run_cmd(
-            [
-                "rsync",
-                "-avz",
-                "--timeout=30",
-                f"{remote}:{remote_path}",
-                str(local_dir) + "/",
-            ],
-            timeout=60,
-        )
+    if not success:
+        print(f"  Warning: Failed to fetch from {remote}")
+        print(f"    {output[:200]}")
+        return None
 
-        if success and any(local_dir.iterdir()):
-            print(f"    Found {tool_name} on {remote}")
-            fetched[tool_name] = local_dir
+    if not any(remote_dir.iterdir()):
+        print(f"  Warning: No data found on {remote}")
+        return None
 
-    if not fetched:
-        print(f"  Warning: No AI tool data found on {remote}")
-
-    return fetched
+    print(f"  Fetched data from {remote}")
+    return remote_dir
 
 
 def find_claude_data_dirs(include_local: bool = True) -> List[Path]:
@@ -100,86 +74,6 @@ def find_claude_data_dirs(include_local: bool = True) -> List[Path]:
         main_claude = home / ".claude"
         if main_claude.exists():
             dirs.append(main_claude)
-
-    return dirs
-
-
-def analyze_continue_dir(continue_dir: Path, source_name: str = "local") -> Dict:
-    """Analyze Continue.dev usage data from tokensGenerated.jsonl."""
-    data = {
-        "source": source_name,
-        "tool": "continue",
-        "timestamps": [],
-        "total_sessions": 0,
-        "total_messages": 0,
-        "model_usage": {},
-        "projects": [],
-        "longest_session": None,
-    }
-
-    tokens_file = continue_dir / "dev_data" / "0.2.0" / "tokensGenerated.jsonl"
-    if tokens_file.exists():
-        for entry in parse_jsonl(tokens_file):
-            ts = parse_timestamp(entry.get("timestamp"))
-            if ts:
-                data["timestamps"].append(
-                    {"ts": ts, "source": source_name, "tool": "continue"}
-                )
-
-            model = entry.get("model", "unknown")
-            prompt_tokens = entry.get("promptTokens", 0)
-            generated_tokens = entry.get("generatedTokens", 0)
-
-            if model not in data["model_usage"]:
-                data["model_usage"][model] = {
-                    "input": 0,
-                    "output": 0,
-                    "cache_read": 0,
-                    "cache_creation": 0,
-                    "total": 0,
-                }
-
-            data["model_usage"][model]["input"] += prompt_tokens
-            data["model_usage"][model]["output"] += generated_tokens
-            data["model_usage"][model]["total"] += prompt_tokens + generated_tokens
-            data["total_messages"] += 1
-
-    sessions_file = continue_dir / "sessions" / "sessions.json"
-    if sessions_file.exists():
-        try:
-            with open(sessions_file, "r") as f:
-                sessions = json.load(f)
-                data["total_sessions"] = (
-                    len(sessions) if isinstance(sessions, list) else 0
-                )
-        except Exception:
-            pass
-
-    return data
-
-
-def find_all_tool_dirs(include_local: bool = True) -> List[Tuple[str, Path, str]]:
-    """Find all AI tool directories. Returns list of (tool_name, path, source_name)."""
-    dirs = []
-
-    if include_local:
-        home = Path.home()
-
-        claude_dir = home / ".claude"
-        if claude_dir.exists():
-            dirs.append(("claude-code", claude_dir, "local"))
-
-        continue_dir = home / ".continue"
-        if continue_dir.exists():
-            dirs.append(("continue", continue_dir, "local"))
-
-        codex_dir = home / ".codex"
-        if codex_dir.exists():
-            dirs.append(("codex", codex_dir, "local"))
-
-        opencode_dir = home / ".local" / "share" / "opencode"
-        if opencode_dir.exists():
-            dirs.append(("opencode", opencode_dir, "local"))
 
     return dirs
 
@@ -246,7 +140,6 @@ MACHINE_COLORS = [
 def analyze_claude_dir(claude_dir: Path, source_name: str = "local") -> Dict:
     data = {
         "source": source_name,
-        "tool": "claude-code",
         "timestamps": [],
         "total_sessions": 0,
         "total_messages": 0,
@@ -259,9 +152,7 @@ def analyze_claude_dir(claude_dir: Path, source_name: str = "local") -> Dict:
     for entry in parse_jsonl(history_file):
         ts = parse_timestamp(entry.get("timestamp"))
         if ts:
-            data["timestamps"].append(
-                {"ts": ts, "source": source_name, "tool": "claude-code"}
-            )
+            data["timestamps"].append({"ts": ts, "source": source_name})
 
     stats_file = claude_dir / "stats-cache.json"
     if stats_file.exists():
@@ -287,9 +178,7 @@ def analyze_claude_dir(claude_dir: Path, source_name: str = "local") -> Dict:
             for entry in parse_jsonl(transcript_file):
                 ts = parse_timestamp(entry.get("timestamp"))
                 if ts:
-                    data["timestamps"].append(
-                        {"ts": ts, "source": source_name, "tool": "claude-code"}
-                    )
+                    data["timestamps"].append({"ts": ts, "source": source_name})
 
     projects_dir = claude_dir / "projects"
     if projects_dir.exists():
@@ -360,22 +249,10 @@ def aggregate_data(
     source_names = []
     source_colors = {}
     per_source_stats = {}
-    tools_seen = set()
-    tool_colors = {}
-    per_tool_stats = {}
 
     for idx, source in enumerate(sources):
         raw_source_name = source.get("source", "unknown")
         source_name = merge_mapping.get(raw_source_name, raw_source_name)
-        tool_name = source.get("tool", "claude-code")
-
-        if tool_name not in tools_seen:
-            tools_seen.add(tool_name)
-            tool_cfg = TOOL_CONFIG.get(
-                tool_name,
-                {"color": MACHINE_COLORS[len(tools_seen) % len(MACHINE_COLORS)]},
-            )
-            tool_colors[tool_name] = tool_cfg.get("color", MACHINE_COLORS[0])
 
         if source_name not in source_names_seen:
             source_names_seen.add(source_name)
@@ -414,20 +291,6 @@ def aggregate_data(
         per_source_stats[source_name]["events"] += len(source.get("timestamps", []))
         per_source_stats[source_name]["days_set"].update(t.date() for t in source_ts)
 
-        if tool_name not in per_tool_stats:
-            per_tool_stats[tool_name] = {
-                "tokens": 0,
-                "sessions": 0,
-                "messages": 0,
-                "days_set": set(),
-                "events": 0,
-            }
-        per_tool_stats[tool_name]["tokens"] += source_tokens
-        per_tool_stats[tool_name]["sessions"] += source.get("total_sessions", 0)
-        per_tool_stats[tool_name]["messages"] += source.get("total_messages", 0)
-        per_tool_stats[tool_name]["events"] += len(source.get("timestamps", []))
-        per_tool_stats[tool_name]["days_set"].update(t.date() for t in source_ts)
-
         for model, usage in source.get("model_usage", {}).items():
             if model not in model_usage:
                 model_usage[model] = usage.copy()
@@ -453,9 +316,6 @@ def aggregate_data(
     for stats in per_source_stats.values():
         stats["days"] = len(stats.pop("days_set"))
 
-    for stats in per_tool_stats.values():
-        stats["days"] = len(stats.pop("days_set"))
-
     date_range = None
     if all_timestamps:
         date_range = (all_timestamps[0]["ts"], all_timestamps[-1]["ts"])
@@ -467,9 +327,6 @@ def aggregate_data(
         "sources": source_names,
         "source_colors": source_colors,
         "per_source_stats": per_source_stats,
-        "tools": list(tools_seen),
-        "tool_colors": tool_colors,
-        "per_tool_stats": per_tool_stats,
         "date_range": date_range,
         "all_timestamps": all_timestamps,
         "total_sessions": total_sessions,
@@ -580,9 +437,6 @@ def generate_html_report(data: Dict) -> str:
     all_timestamps = data.get("all_timestamps", [])
     sources = data.get("sources", ["local"])
     source_colors = data.get("source_colors", {"local": MACHINE_COLORS[0]})
-    tools = data.get("tools", ["claude-code"])
-    tool_colors = data.get("tool_colors", {"claude-code": "#ff6b35"})
-    per_tool_stats = data.get("per_tool_stats", {})
 
     first_date = None
     if data.get("date_range"):
@@ -595,45 +449,15 @@ def generate_html_report(data: Dict) -> str:
     active_dates = set()
     date_activity = defaultdict(int)
     date_sources = defaultdict(set)
-    date_tools = defaultdict(set)
     for item in all_timestamps:
         ts = item["ts"]
         source = item["source"]
-        tool = item.get("tool", "claude-code")
         d = ts.date()
         active_dates.add(d)
         date_activity[d] += 1
         date_sources[d].add(source)
-        date_tools[d].add(tool)
 
     max_activity = max(date_activity.values()) if date_activity else 1
-
-    # Calculate daily stats for "Today" view and last 7 days
-    today = datetime.now().date()
-    today_events = date_activity.get(today, 0)
-    today_tools = date_tools.get(today, set())
-    today_tools_count = len(today_tools)
-
-    total_events = sum(date_activity.values()) if date_activity else 1
-    tokens_per_event = data.get("total_tokens", 0) / total_events if total_events else 0
-
-    last_7_days = []
-    for i in range(6, -1, -1):
-        day = today - timedelta(days=i)
-        day_events = date_activity.get(day, 0)
-        day_tokens = int(day_events * tokens_per_event)
-        last_7_days.append(
-            {
-                "date": day,
-                "events": day_events,
-                "tokens": day_tokens,
-                "label": day.strftime("%a")[:2],
-            }
-        )
-
-    today_tokens = last_7_days[-1]["tokens"]
-    week_max_tokens = max(d["tokens"] for d in last_7_days) if last_7_days else 1
-    week_total_tokens = sum(d["tokens"] for d in last_7_days)
 
     models = data.get("model_usage", {})
     sorted_models = sorted(
@@ -685,24 +509,25 @@ def generate_html_report(data: Dict) -> str:
         current = month_start
         while current <= month_end:
             activity = date_activity.get(current, 0)
-            day_tools = date_tools.get(current, set())
+            day_sources = date_sources.get(current, set())
 
             if activity == 0:
                 color = "var(--dot-inactive)"
-            elif len(day_tools) == 1:
-                tool = list(day_tools)[0]
-                color = tool_colors.get(tool, MACHINE_COLORS[0])
+            elif len(day_sources) == 1:
+                source = list(day_sources)[0]
+                color = source_colors.get(source, MACHINE_COLORS[0])
             else:
                 color = (
                     "linear-gradient(135deg, "
                     + ", ".join(
-                        tool_colors.get(t, MACHINE_COLORS[0]) for t in sorted(day_tools)
+                        source_colors.get(s, MACHINE_COLORS[0])
+                        for s in sorted(day_sources)
                     )
                     + ")"
                 )
 
-            tools_str = ", ".join(sorted(day_tools)) if day_tools else "none"
-            days_html += f'<div class="dot" style="background: {color};" title="{current}: {activity} events ({tools_str})"></div>'
+            sources_str = ", ".join(sorted(day_sources)) if day_sources else "none"
+            days_html += f'<div class="dot" style="background: {color};" title="{current}: {activity} events ({sources_str})"></div>'
             current += timedelta(days=1)
 
         calendar_html += f"""
@@ -763,15 +588,15 @@ def generate_html_report(data: Dict) -> str:
         current = month_start
         while current <= month_end:
             activity = date_activity.get(current, 0)
-            day_tools_set = date_tools.get(current, set())
+            day_sources = date_sources.get(current, set())
 
             if activity == 0:
                 color = "var(--dot-inactive)"
-            elif len(day_tools_set) == 1:
-                tool = list(day_tools_set)[0]
-                color = tool_colors.get(tool, MACHINE_COLORS[0])
+            elif len(day_sources) == 1:
+                source = list(day_sources)[0]
+                color = source_colors.get(source, MACHINE_COLORS[0])
             else:
-                color = tool_colors.get(sorted(day_tools_set)[0], MACHINE_COLORS[0])
+                color = source_colors.get(sorted(day_sources)[0], MACHINE_COLORS[0])
 
             dots_html += f'<div class="mini-dot" style="background: {color};"></div>'
             current += timedelta(days=1)
@@ -779,84 +604,40 @@ def generate_html_report(data: Dict) -> str:
         mini_calendar_html += f'<div class="mini-month">{dots_html}</div>'
     mini_calendar_html += "</div>"
 
-    tools_text = ", ".join(TOOL_CONFIG.get(t, {"name": t})["name"] for t in tools)
+    sources_text = (
+        ", ".join(sources) if len(sources) <= 3 else f"{len(sources)} machines"
+    )
 
     legend_html = ""
-    for tool in tools:
-        tool_cfg = TOOL_CONFIG.get(tool, {"name": tool, "color": "#888888"})
-        color = tool_colors.get(tool, tool_cfg["color"])
-        legend_html += f'<div class="legend-item"><div class="legend-dot" style="background: {color};"></div><span>{tool_cfg.get("name", tool)}</span></div>'
+    for source in sources:
+        color = source_colors.get(source, MACHINE_COLORS[0])
+        display_name = source if len(source) <= 20 else source[:17] + "..."
+        legend_html += f'<div class="legend-item"><div class="legend-dot" style="background: {color};"></div><span>{display_name}</span></div>'
 
-    tool_cards_html = ""
-    for tool in tools:
-        tool_cfg = TOOL_CONFIG.get(
-            tool, {"name": tool, "color": "#888888", "icon": "?"}
-        )
-        stats = per_tool_stats.get(tool, {})
-        color = tool_colors.get(tool, tool_cfg["color"])
-        tool_cards_html += f"""
-        <div class="tool-card" style="border-left: 4px solid {color};">
-            <div class="tool-header">
-                <div class="tool-icon" style="background: {color};">{tool_cfg.get("icon", "?")}</div>
-                <div class="tool-name">{tool_cfg.get("name", tool)}</div>
-            </div>
-            <div class="tool-stats">
-                <div class="tool-stat"><span class="tool-stat-value">{format_number(stats.get("tokens", 0))}</span><span class="tool-stat-label">tokens</span></div>
-                <div class="tool-stat"><span class="tool-stat-value">{stats.get("days", 0)}</span><span class="tool-stat-label">days</span></div>
-                <div class="tool-stat"><span class="tool-stat-value">{stats.get("messages", 0)}</span><span class="tool-stat-label">messages</span></div>
+    per_source_stats = data.get("per_source_stats", {})
+    host_stats_html = ""
+    for source in sources:
+        color = source_colors.get(source, MACHINE_COLORS[0])
+        stats = per_source_stats.get(source, {})
+        display_name = source if len(source) <= 25 else source[:22] + "..."
+        host_stats_html += f"""
+        <div class="host-stat-card" style="border-left: 4px solid {color};">
+            <div class="host-name" style="color: {color};">{display_name}</div>
+            <div class="host-stats-grid">
+                <div><span class="host-stat-value">{format_number(stats.get("tokens", 0))}</span><span class="host-stat-label">tokens</span></div>
+                <div><span class="host-stat-value">{stats.get("days", 0)}</span><span class="host-stat-label">days</span></div>
+                <div><span class="host-stat-value">{stats.get("sessions", 0)}</span><span class="host-stat-label">sessions</span></div>
+                <div><span class="host-stat-value">{stats.get("events", 0)}</span><span class="host-stat-label">events</span></div>
             </div>
         </div>
         """
-
-    sparkline_width = 400
-    sparkline_height = 100
-    sparkline_points = []
-    sparkline_coords = []
-    for i, day_data in enumerate(last_7_days):
-        x = (i / 6) * sparkline_width if len(last_7_days) > 1 else sparkline_width / 2
-        y = (
-            sparkline_height
-            - 20
-            - (day_data["tokens"] / week_max_tokens * (sparkline_height - 40))
-            if week_max_tokens > 0
-            else sparkline_height / 2
-        )
-        sparkline_points.append(f"{x:.1f},{y:.1f}")
-        sparkline_coords.append((x, y, day_data))
-
-    sparkline_path = " ".join(sparkline_points)
-    sparkline_labels = "".join(
-        f'<text x="{(i / 6) * sparkline_width}" y="{sparkline_height + 12}" fill="#888" font-size="10" text-anchor="middle">{d["label"]}</text>'
-        for i, d in enumerate(last_7_days)
-    )
-
-    sparkline_dots = ""
-    sparkline_values = ""
-    for x, y, day_data in sparkline_coords:
-        sparkline_dots += f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="var(--accent)" stroke="var(--bg-dark)" stroke-width="2"/>'
-        value_y = y - 12 if y > 30 else y + 20
-        sparkline_values += f'<text x="{x:.1f}" y="{value_y:.1f}" fill="#fff" font-size="10" font-weight="500" text-anchor="middle">{format_number(day_data["tokens"])}</text>'
-
-    sparkline_svg = f'''<svg viewBox="0 0 {sparkline_width} {sparkline_height + 18}" class="week-sparkline">
-        <defs>
-            <linearGradient id="sparkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/>
-                <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/>
-            </linearGradient>
-        </defs>
-        <polygon points="0,{sparkline_height - 20} {sparkline_path} {sparkline_width},{sparkline_height - 20}" fill="url(#sparkGradient)"/>
-        <polyline points="{sparkline_path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        {sparkline_dots}
-        {sparkline_values}
-        {sparkline_labels}
-    </svg>'''
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Tools - Year in Review {year}</title>
+    <title>Claude Code - Year in Review {year}</title>
     <style>
         :root {{
             --bg-dark: #1a1a1a;
@@ -966,168 +747,6 @@ def generate_html_report(data: Dict) -> str:
         .host-stat-label {{
             font-size: 12px;
             color: var(--text-secondary);
-        }}
-        
-        .tool-card {{
-            background: var(--bg-card);
-            padding: 20px;
-            border-radius: 8px;
-        }}
-        
-        .tool-header {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }}
-        
-        .tool-icon {{
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            color: white;
-        }}
-        
-        .tool-name {{
-            font-size: 16px;
-            font-weight: 500;
-        }}
-        
-        .tool-stats {{
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-        }}
-        
-        .tool-stat {{
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }}
-        
-        .tool-stat-value {{
-            font-size: 20px;
-            font-weight: 300;
-        }}
-        
-        .tool-stat-label {{
-            font-size: 11px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }}
-        
-        .today-section {{
-            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(255, 107, 53, 0.08) 100%);
-            border-radius: 16px;
-            padding: 32px;
-            margin-bottom: 60px;
-        }}
-        
-        .today-header {{
-            display: flex;
-            align-items: baseline;
-            gap: 16px;
-            margin-bottom: 8px;
-        }}
-        
-        .today-header .section-title {{
-            margin-bottom: 0;
-            font-size: 28px;
-        }}
-        
-        .today-date {{
-            font-size: 16px;
-            color: var(--text-secondary);
-        }}
-        
-        .today-meta {{
-            font-size: 13px;
-            color: var(--text-dim);
-            margin-bottom: 24px;
-        }}
-        
-        .today-content {{
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 32px;
-            align-items: center;
-        }}
-        
-        .today-hero {{
-            text-align: center;
-        }}
-        
-        .today-hero-value {{
-            font-size: 56px;
-            font-weight: 200;
-            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.1;
-        }}
-        
-        .today-hero-label {{
-            font-size: 12px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 4px;
-        }}
-        
-        .today-chart {{
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            padding: 20px;
-        }}
-        
-        .today-chart-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 12px;
-        }}
-        
-        .today-chart-title {{
-            font-size: 13px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        
-        .today-chart-total {{
-            font-size: 14px;
-            color: var(--text-primary);
-        }}
-        
-        .week-sparkline {{
-            width: 100%;
-            height: auto;
-        }}
-        
-        @media (max-width: 768px) {{
-            .today-content {{
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }}
-        }}
-        
-        .year-header {{
-            text-align: center;
-            margin-bottom: 20px;
-        }}
-        
-        .year-header .section-title {{
-            font-size: 42px;
-            background: linear-gradient(135deg, #ffffff 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }}
         
         .stats-row {{
@@ -1413,15 +1032,6 @@ def generate_html_report(data: Dict) -> str:
             width: 100%;
         }}
         
-        .mini-calendar-label {{
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
-        }}
-        
         .mini-month-labels {{
             display: grid;
             grid-template-columns: repeat(12, 1fr);
@@ -1558,61 +1168,37 @@ def generate_html_report(data: Dict) -> str:
 </head>
 <body>
     <div class="container">
-        <div class="sources-badge">Data from: {tools_text}</div>
+        <div class="sources-badge">Data from: {sources_text}</div>
         <div class="legend">{legend_html}</div>
         
         <div class="host-stats-section">
-            {tool_cards_html}
+            {host_stats_html}
         </div>
-        
-        <section class="section today-section">
-            <div class="today-header">
-                <h1 class="section-title">This Week</h1>
-                <span class="today-date">{today.strftime("%B %d, %Y")}</span>
-            </div>
-            <div class="today-meta">{today_events} events today across {today_tools_count} tool{"s" if today_tools_count != 1 else ""}</div>
-            <div class="today-content">
-                <div class="today-hero">
-                    <div class="today-hero-value">{format_number(today_tokens)}</div>
-                    <div class="today-hero-label">Tokens Today</div>
-                </div>
-                <div class="today-chart">
-                    <div class="today-chart-header">
-                        <span class="today-chart-title">7 Day Trend</span>
-                        <span class="today-chart-total">{format_number(week_total_tokens)} this week</span>
-                    </div>
-                    {sparkline_svg}
-                </div>
-            </div>
-        </section>
-        
-        <section class="section">
-            <div class="year-header">
-                <h1 class="section-title">All Time</h1>
-            </div>
-        </section>
         
         <section class="section">
             <h1 class="section-title">Agents run on tokens.<br>Millions of them were yours.</h1>
             <div class="stats-row">
                 <div class="stat">
-                    <div class="stat-label">Total Tokens</div>
+                    <div class="stat-label">Tokens Used</div>
                     <div class="stat-value">{total_tokens:,}</div>
                 </div>
+            </div>
+            <div class="weeks-grid">
+                {weeks_html}
+            </div>
+        </section>
+        
+        <section class="section">
+            <h1 class="section-title">You got started building with Claude Code.</h1>
+            <div class="stats-row">
                 <div class="stat">
-                    <div class="stat-label">Total Days</div>
+                    <div class="stat-label">Days Used</div>
                     <div class="stat-value">{streaks.get("total_days", 0)}</div>
                 </div>
                 <div class="stat">
                     <div class="stat-label">Longest Streak</div>
                     <div class="stat-value">{streaks.get("longest", 0)}d</div>
                 </div>
-            </div>
-        </section>
-        
-        <section class="section">
-            <div class="year-header">
-                <h1 class="section-title">'{str(year)[2:]} Activity</h1>
             </div>
             <div class="calendar">
                 {calendar_html}
@@ -1622,7 +1208,7 @@ def generate_html_report(data: Dict) -> str:
         <section class="section">
             <div class="twitter-card-wrapper">
                 <div class="summary-card" id="twitter-card">
-                    <div class="card-year">ALL TIME</div>
+                    <div class="card-year">2025</div>
                     <div class="card-left">
                         <div class="card-hero">
                             <div class="card-hero-label">Total Tokens</div>
@@ -1631,8 +1217,8 @@ def generate_html_report(data: Dict) -> str:
                         
                         <div class="card-stats">
                             <div class="card-stat">
-                                <div class="card-stat-value">{len(tools)}</div>
-                                <div class="card-stat-label">Tools</div>
+                                <div class="card-stat-value">{data.get("total_messages", 0):,}</div>
+                                <div class="card-stat-label">Messages</div>
                             </div>
                             <div class="card-stat">
                                 <div class="card-stat-value">{streaks.get("total_days", 0)}</div>
@@ -1645,7 +1231,7 @@ def generate_html_report(data: Dict) -> str:
                         </div>
                         
                         <div class="models-section">
-                            <h3>Top Models</h3>
+                            <h3>Models Used</h3>
                             <div class="models-list">
                                 {models_html}
                             </div>
@@ -1655,14 +1241,13 @@ def generate_html_report(data: Dict) -> str:
                             <svg class="logo" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L18.5 7 12 9.5 5.5 7 12 4.5zM4 8.5l7 3.5v7.5l-7-3.5V8.5zm16 0v7.5l-7 3.5v-7.5l7-3.5z"/>
                             </svg>
-                            <span>AI Tools Stats</span>
-                            <span style="margin-left: auto; color: var(--text-dim);">Since {days_ago} days ago</span>
+                            <span>Claude Code {year}</span>
+                            <span style="margin-left: auto; color: var(--text-dim);">Started {days_ago} days ago</span>
                         </div>
                     </div>
                     
                     <div class="card-right">
                         <div class="mini-calendar">
-                            <div class="mini-calendar-label">'{str(year)[2:]} Activity</div>
                             {mini_calendar_html}
                         </div>
                     </div>
@@ -1757,9 +1342,9 @@ def main():
         else:
             i += 1
 
-    print("\n" + "=" * 50)
-    print("      AI Tools - Year in Review")
-    print("=" * 50 + "\n")
+    print("\n╔══════════════════════════════════════════╗")
+    print("║     Claude Code - Year in Review        ║")
+    print("╚══════════════════════════════════════════╝\n")
 
     sources_data = []
     temp_dir = None
@@ -1770,27 +1355,10 @@ def main():
             print(f"Fetching data from {len(remotes)} remote(s)...")
 
             for remote in remotes:
-                remote_tools = fetch_remote_data(remote, temp_dir)
-                for tool_name, tool_path in remote_tools.items():
-                    if tool_name == "claude-code":
-                        data = analyze_claude_dir(tool_path, source_name=remote)
-                    elif tool_name == "continue":
-                        data = analyze_continue_dir(tool_path, source_name=remote)
-                    elif tool_name == "codex":
-                        from tool_parsers import analyze_codex_dir
-
-                        data = analyze_codex_dir(tool_path, source_name=remote)
-                    elif tool_name == "opencode":
-                        from tool_parsers import analyze_opencode_dir
-
-                        data = analyze_opencode_dir(tool_path, source_name=remote)
-                    else:
-                        continue
-                    if (
-                        data.get("timestamps")
-                        or data.get("total_sessions", 0) > 0
-                        or data.get("model_usage")
-                    ):
+                remote_path = fetch_remote_data(remote, temp_dir)
+                if remote_path:
+                    data = analyze_claude_dir(remote_path, source_name=remote)
+                    if data["timestamps"]:
                         sources_data.append(data)
 
         for data_path_spec in data_paths:
@@ -1824,25 +1392,11 @@ def main():
                 print(f"  Warning: Path not found: {path_str}")
 
         if not remote_only:
-            print("Scanning local AI tool data...")
-            tool_dirs = find_all_tool_dirs(include_local=True)
+            print("Scanning local Claude Code data...")
+            local_dirs = find_claude_data_dirs(include_local=True)
 
-            for tool_name, tool_dir, source_name in tool_dirs:
-                print(f"  Found {tool_name} at {tool_dir}")
-                if tool_name == "claude-code":
-                    data = analyze_claude_dir(tool_dir, source_name=source_name)
-                elif tool_name == "continue":
-                    data = analyze_continue_dir(tool_dir, source_name=source_name)
-                elif tool_name == "codex":
-                    from tool_parsers import analyze_codex_dir
-
-                    data = analyze_codex_dir(tool_dir, source_name=source_name)
-                elif tool_name == "opencode":
-                    from tool_parsers import analyze_opencode_dir
-
-                    data = analyze_opencode_dir(tool_dir, source_name=source_name)
-                else:
-                    continue
+            for claude_dir in local_dirs:
+                data = analyze_claude_dir(claude_dir, source_name="local")
                 if (
                     data["timestamps"]
                     or data["total_sessions"] > 0
@@ -1851,10 +1405,8 @@ def main():
                     sources_data.append(data)
 
         if not sources_data:
-            print("\nNo AI tool data found.")
-            print(
-                "Expected data in ~/.claude/, ~/.continue/, ~/.codex/, or ~/.local/share/opencode/"
-            )
+            print("\nNo Claude Code data found.")
+            print("Expected data in ~/.claude/")
             if remotes:
                 print("Remote fetch may have failed - check SSH connectivity")
             sys.exit(1)
@@ -1877,17 +1429,14 @@ def main():
             print(json.dumps(json_data, default=serialize, indent=2))
         else:
             html = generate_html_report(aggregated)
-            output_path = Path.home() / "ai-year-review.html"
+            output_path = Path.home() / "claude-year-review.html"
             with open(output_path, "w") as f:
                 f.write(html)
 
-            print(f"\n" + "=" * 50)
-            print("SUMMARY")
-            print("=" * 50)
-            print(f"  Report saved to: {output_path}")
-            print(f"  Tools: {', '.join(aggregated.get('tools', []))}")
-            print(f"  Total tokens: {format_number(aggregated['total_tokens'])}")
-            print(f"  Days active: {aggregated['streaks']['total_days']}")
+            print(f"\n✓ Report saved to: {output_path}")
+            print(f"✓ Sources: {', '.join(aggregated['sources'])}")
+            print(f"✓ Total tokens: {format_number(aggregated['total_tokens'])}")
+            print(f"✓ Days active: {aggregated['streaks']['total_days']}")
             print("\nOpening in browser...")
             webbrowser.open(f"file://{output_path}")
 

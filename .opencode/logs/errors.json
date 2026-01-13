@@ -1,0 +1,32 @@
+[
+  {
+    "tool": "lsp_diagnostics",
+    "output": "Error: LSP server 'basedpyright' is configured but NOT INSTALLED.\n\nCommand not found: basedpyright-langserver\n\nTo install:\n  pip install basedpyright\n\nSupported extensions: .py, .pyi\n\nAfter installation, the server will be available automatically.\nRun 'lsp_servers' tool to verify installation status.",
+    "indicator": "error:",
+    "timestamp": "2026-01-13T11:00:21.210Z"
+  },
+  {
+    "tool": "interactive_bash",
+    "output": "Error: no server running on /private/tmp/tmux-501/default",
+    "indicator": "error:",
+    "timestamp": "2026-01-13T11:01:07.902Z"
+  },
+  {
+    "tool": "glob",
+    "output": "Error: rg: Operation timed out (os error 60)\nrg: Operation timed out (os error 60)\nrg: /Users/jarvis/Library/Containers/com.apple.mediaanalysisd/Data/tmp/TemporaryItems/NSIRD_mediaanalysisd_PIVg8j: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/Message/Media/41793353737@s.whatsapp.net/4/6: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Containers/com.apple.mediaanalysisd/Data/tmp/TemporaryItems/NSIRD_mediaanalysisd_PL3g3i: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Group Containers/5U8NS4GX82.dayoneapp2/Data/Documents/indexes: Interrupted system call (os error 4)\n[Agent Usage Reminder]\n\nYou called a search/fetch tool directly without leveraging specialized agents.\n\nRECOMMENDED: Use background_task with explore/librarian agents for better results:\n\n```\n// Parallel exploration - fire multiple agents simultaneously\nbackground_task(agent=\"explore\", prompt=\"Find all files matching pattern... [truncated]",
+    "indicator": "error:",
+    "timestamp": "2026-01-13T11:02:19.003Z"
+  },
+  {
+    "tool": "grep",
+    "output": "Error: rg: /Users/jarvis/ai-year-review.html: IO error for operation on /Users/jarvis/ai-year-review.html: No such file or directory (os error 2)\n[Agent Usage Reminder]\n\nYou called a search/fetch tool directly without leveraging specialized agents.\n\nRECOMMENDED: Use background_task with explore/librarian agents for better results:\n\n```\n// Parallel exploration - fire multiple agents simultaneously\nbackground_task(agent=\"explore\", prompt=\"Find all files matching pattern X\")\nbackground_task(agent=\"explore\", prompt=\"Search for implementation of Y\") \nbackground_task(agent=\"librarian\", prompt=\"Lookup documentation for Z\")\n\n// Then continue your work while they run in background\n// System will notify you when each completes\n```\n\nWHY:\n- Agents can perform deeper, more thorough searches\n- Background tasks run in parallel, saving time\n- Specialized agents have domain expertise\n- Reduces context window usage in main session\n\nALWAYS prefer: Multiple parallel background_task calls > Direct tool cal... [truncated]",
+    "indicator": "error:",
+    "timestamp": "2026-01-13T11:11:45.490Z"
+  },
+  {
+    "tool": "glob",
+    "output": "Error: rg: Operation timed out (os error 60)\nrg: Operation timed out (os error 60)\nrg: /Users/jarvis/Library/Group Containers/Q79WDW8YH9.com.evernote.Evernote/CoreNote/accounts/www.evernote.com/5102481/content/6357169C-CFF8-46C2-9458-C6B2A99E5623: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Containers/com.apple.mediaanalysisd/Data/tmp/com.apple.MetalPerformanceShadersGraph/mpsgraph-22062-2025-07-19_02_32_34-3845434300: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Group Containers/Q79WDW8YH9.com.evernote.Evernote/CoreNote/accounts/www.evernote.com/5102481/content/758B2059-778A-4415-857A-2FD46C511505: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Containers/com.apple.mediaanalysisd/Data/tmp/com.apple.MetalPerformanceShadersGraph/mpsgraph-79778-2025-06-07_19_19_08-2066042791: Interrupted system call (os error 4)\nrg: /Users/jarvis/Library/Containers/com.apple.STMExtension.GarageBand/Data/Library/Images: Interrupted system call (os error... [truncated]",
+    "indicator": "error:",
+    "timestamp": "2026-01-13T11:13:03.404Z"
+  }
+]

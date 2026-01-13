@@ -1,0 +1,103 @@
+[
+  {
+    "type": "session.created",
+    "directory": "/Volumes/DevHub_ext/factory/01-blueprint/claude-year-stats",
+    "timestamp": "2026-01-13T10:37:00.486Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 57,
+    "toolCount": 3,
+    "estimatedTokens": 17715,
+    "estimatedCost": 0.159435,
+    "timestamp": "2026-01-13T10:38:13.801Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 105,
+    "toolCount": 24,
+    "estimatedTokens": 35381,
+    "estimatedCost": 0.268542,
+    "timestamp": "2026-01-13T10:42:03.666Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 0,
+    "toolCount": 0,
+    "estimatedTokens": 0,
+    "estimatedCost": 0,
+    "timestamp": "2026-01-13T10:42:20.895Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 0,
+    "toolCount": 0,
+    "estimatedTokens": 0,
+    "estimatedCost": 0,
+    "timestamp": "2026-01-13T10:44:39.341Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 34,
+    "toolCount": 5,
+    "estimatedTokens": 11153,
+    "estimatedCost": 0.100377,
+    "timestamp": "2026-01-13T10:47:11.904Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 836,
+    "toolCount": 73,
+    "estimatedTokens": 64472,
+    "estimatedCost": 0.5802479999999999,
+    "timestamp": "2026-01-13T11:02:59.065Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 483,
+    "toolCount": 60,
+    "estimatedTokens": 53103,
+    "estimatedCost": 0.477927,
+    "timestamp": "2026-01-13T11:14:26.301Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 131,
+    "toolCount": 16,
+    "estimatedTokens": 8513,
+    "estimatedCost": 0.07661699999999999,
+    "timestamp": "2026-01-13T11:18:54.692Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 37,
+    "toolCount": 4,
+    "estimatedTokens": 2425,
+    "estimatedCost": 0.021824999999999997,
+    "timestamp": "2026-01-13T11:27:31.925Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 246,
+    "toolCount": 22,
+    "estimatedTokens": 15735,
+    "estimatedCost": 0.141615,
+    "timestamp": "2026-01-13T11:33:19.202Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 57,
+    "toolCount": 7,
+    "estimatedTokens": 2244,
+    "estimatedCost": 0.020196000000000002,
+    "timestamp": "2026-01-13T12:57:42.305Z"
+  },
+  {
+    "type": "task.complete",
+    "duration": 70,
+    "toolCount": 9,
+    "estimatedTokens": 2289,
+    "estimatedCost": 0.020601,
+    "timestamp": "2026-01-13T12:59:35.037Z"
+  }
+]
